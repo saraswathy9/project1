@@ -1,0 +1,22 @@
+# prometheus-values.yaml
+# WHY: We install Prometheus+Grafana using the official Helm chart
+# "kube-prometheus-stack". This file overrides just the defaults we
+# care about (kept minimal to fit AWS Free Tier's small EC2/node sizes).
+#
+# HOW to install (run from your terminal where kubectl/helm are configured):
+#   helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+#   helm repo update
+#   helm install monitoring prometheus-community/kube-prometheus-stack -f monitoring/prometheus-values.yaml -n monitoring --create-namespace
+
+grafana:
+  adminPassword: "ChangeMe123!"   # change this before real use
+  service:
+    type: LoadBalancer            # gives Grafana a public URL to view dashboards
+
+prometheus:
+  prometheusSpec:
+    retention: 3d                 # keep 3 days of metrics (saves storage - free tier friendly)
+    resources:
+      requests:
+        cpu: 200m
+        memory: 400Mi
