@@ -1,0 +1,16 @@
+# service.yaml
+# WHY: Pods have random, changing IPs. A Service gives them one stable
+# address, and a LoadBalancer type gets AWS to create a public
+# Elastic Load Balancer automatically pointing at healthy pods.
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: devops-demo-app-svc
+spec:
+  type: LoadBalancer
+  selector:
+    app: devops-demo-app     # routes traffic to pods with this label
+  ports:
+    - port: 80          # external port users hit
+      targetPort: 5000  # internal container port
