@@ -1,0 +1,44 @@
+# deployment.yaml
+# WHY: Tells Kubernetes "always keep 2 healthy copies (pods) of my app
+# running." If a pod crashes, Kubernetes automatically restarts it.
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: devops-demo-app
+  labels:
+    app: devops-demo-app
+spec:
+  replicas: 2   # 2 copies = basic high availability
+  selector:
+    matchLabels:
+      app: devops-demo-app
+  template:
+    metadata:
+      labels:
+        app: devops-demo-app
+    spec:
+      containers:
+        - name: devops-demo-app
+          image: <AWS_ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com/devops-demo-app:latest
+          ports:
+            - containerPort: 5000
+          resources:
+            requests:        # minimum guaranteed resources
+              cpu: "100m"
+              memory: "128Mi"
+            limits:           # hard cap - protects other pods on the node
+              cpu: "250m"
+              memory: "256Mi"
+          livenessProbe:      # "is the app still alive?" - restarts pod if it fails
+            httpGet:
+              path: /health
+              port: 5000
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          readinessProbe:     # "is the app ready for traffic?" - stops routing if it fails
+            httpGet:
+              path: /health
+              port: 5000
+            initialDelaySeconds: 5
+            periodSeconds: 10
