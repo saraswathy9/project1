@@ -1,0 +1,88 @@
+# install-jenkins.yml
+# WHY Ansible (vs doing this by hand): once Terraform creates a raw EC2
+# instance, it has NOTHING on it - no Jenkins, no Docker, no Java. Ansible
+# connects over SSH and installs/configures everything automatically and
+# repeatably (run it on 1 server or 100, same result).
+#
+# WHEN: Run this ONCE right after "terraform apply" finishes and the EC2
+# instance is running.
+
+---
+- name: Configure Jenkins CI/CD server
+  hosts: jenkins_servers
+  become: true   # run tasks as root (sudo)
+
+  tasks:
+
+    - name: Install Java 17 (required to run Jenkins)
+      yum:
+        name: java-17-amazon-corretto
+        state: present
+
+    - name: Add Jenkins repo
+      get_url:
+        url: https://pkg.jenkins.io/redhat-stable/jenkins.repo
+        dest: /etc/yum.repos.d/jenkins.repo
+
+    - name: Import Jenkins GPG key
+      rpm_key:
+        state: present
+        key: https://pkg.jenkins.io/redhat-stable/jenkins.io-2023.key
+
+    - name: Install Jenkins
+      yum:
+        name: jenkins
+        state: present
+
+    - name: Install Docker (Jenkins needs it to build images)
+      yum:
+        name: docker
+        state: present
+
+    - name: Add jenkins user to docker group (so it can run docker commands)
+      user:
+        name: jenkins
+        groups: docker
+        append: yes
+
+    - name: Install Git
+      yum:
+        name: git
+        state: present
+
+    - name: Install unzip (needed for AWS CLI installer)
+      yum:
+        name: unzip
+        state: present
+
+    - name: Download AWS CLI v2
+      get_url:
+        url: "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip"
+        dest: /tmp/awscliv2.zip
+
+    - name: Unzip AWS CLI installer
+      unarchive:
+        src: /tmp/awscliv2.zip
+        dest: /tmp
+        remote_src: yes
+
+    - name: Install AWS CLI
+      command: /tmp/aws/install
+      args:
+        creates: /usr/local/bin/aws   # skip if already installed
+
+    - name: Start and enable Docker
+      service:
+        name: docker
+        state: started
+        enabled: true
+
+    - name: Start and enable Jenkins
+      service:
+        name: jenkins
+        state: started
+        enabled: true
+
+    - name: Print Jenkins initial admin password location
+      debug:
+        msg: "Run: sudo cat /var/lib/jenkins/secrets/initialAdminPassword"
